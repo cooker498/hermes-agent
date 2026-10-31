@@ -91,6 +91,7 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
   }
 
   const jobs = routineView.live || !routines.error ? routineView.jobs : lastGood
+  const knownJobIds = jobs.map(job => job.job_id)
   const detailJob = detailJobId ? jobs.find(job => job.job_id === detailJobId) || null : null
 
   const persistLook = async (kind: 'avatar' | 'name', next: EditProfileLook) => {
@@ -125,6 +126,10 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
         queryClient.invalidateQueries({
           queryKey: ROSTER_KEY
         })
+      }
+
+      if (kind === 'name') {
+        setTitle(next.title.trim())
       }
 
       setOpened(next)
@@ -198,8 +203,10 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
                 {jobs.map(job => (
                   <RoutineRow
                     allowRemove={false}
+                    expectedProfile={bot.name}
                     job={job}
-                    key={job.job_id}
+                    key={`${bot.name}:${job.job_id}`}
+                    knownJobIds={knownJobIds}
                     onOpen={selected => setDetailJobId(selected.job_id)}
                     owner={bot}
                   />

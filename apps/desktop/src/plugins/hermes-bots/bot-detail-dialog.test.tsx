@@ -7,10 +7,11 @@ import type * as DataModule from './data'
 import { translateBotsIn } from './i18n-test-helper'
 import type { RoutineJob } from './types'
 
-const { locale, notify, notifyError, routinesState, saveBotMeta } = vi.hoisted(() => ({
+const { locale, notify, notifyError, request, routinesState, saveBotMeta } = vi.hoisted(() => ({
   locale: { current: 'en' as 'en' | 'zh' },
   notify: vi.fn(),
   notifyError: vi.fn(),
+  request: vi.fn(async () => ({})),
   routinesState: {
     current: {
       data: { jobs: [], scoped: 'research' } as unknown,
@@ -26,7 +27,7 @@ vi.mock('@hermes/plugin-sdk', async importOriginal => {
 
   return {
     ...sdk,
-    host: { ...sdk.host, notify, notifyError },
+    host: { ...sdk.host, notify, notifyError, request },
     usePluginI18n: () => translateBotsIn(locale.current)
   }
 })
@@ -68,6 +69,7 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   locale.current = 'en'
+  request.mockResolvedValue({})
   saveBotMeta.mockResolvedValue({ serverOutcome: 'persisted' })
   routinesState.current = { data: { jobs: [], scoped: 'research' }, error: null, isLoading: false }
 })
@@ -89,6 +91,73 @@ describe('bot details', () => {
     render(<RoutineRow allowRemove={false} job={job} owner={{ name: 'research' }} />)
 
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+  })
+
+  it('refuses a row whose owner is not the profile the UI claims to show', async () => {
+    const job: RoutineJob = {
+      enabled: true,
+      job_id: 'job-1',
+      name: 'Daily report',
+      schedule: 'every 1d',
+      state: 'scheduled'
+    }
+
+    render(<RoutineRow expectedProfile="botdetail-test" job={job} owner={{ name: 'ops' }} />)
+    fireEvent.click(screen.getByRole('switch'))
+
+    await waitFor(() => expect(notifyError).toHaveBeenCalled())
+
+    const [error, copy] = notifyError.mock.calls[0]
+
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toBe('routine job-1 does not belong to botdetail-test')
+    expect(copy).toBeTruthy()
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it('refuses a row whose job id was not in the listed set', async () => {
+    const job: RoutineJob = {
+      enabled: true,
+      job_id: 'job-1',
+      name: 'Daily report',
+      schedule: 'every 1d',
+      state: 'scheduled'
+    }
+
+    render(<RoutineRow expectedProfile="ops" job={job} knownJobIds={['job-2']} owner={{ name: 'ops' }} />)
+    fireEvent.click(screen.getByRole('switch'))
+
+    await waitFor(() => expect(notifyError).toHaveBeenCalled())
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it('acts when the owner, expected profile and listed job id all agree', async () => {
+    const job: RoutineJob = {
+      enabled: true,
+      job_id: 'job-1',
+      name: 'Daily report',
+      schedule: 'every 1d',
+      state: 'scheduled'
+    }
+
+    render(<RoutineRow expectedProfile="ops" job={job} knownJobIds={['job-1']} owner={{ name: 'ops' }} />)
+
+    const toggle = screen.getByRole('switch')
+
+    expect(toggle.getAttribute('data-profile')).toBe('ops')
+    expect(toggle.getAttribute('data-job-id')).toBe('job-1')
+
+    fireEvent.click(toggle)
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('cron.manage', {
+        action: 'pause',
+        name: 'job-1',
+        profile: 'ops'
+      })
+    )
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(notifyError).not.toHaveBeenCalled()
   })
 
   it('saves an edited display name through saveBotMeta', async () => {
@@ -115,6 +184,22 @@ describe('bot details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
 
     await waitFor(() => expect(saveBotMeta).toHaveBeenCalledWith(bot, { title: 'Analyst' }))
+  })
+
+  it('shows the trimmed saved name and stays dirty-free on whitespace-only edits', async () => {
+    const bot = { name: 'research', title: 'Research' }
+
+    render(<BotDetailDialog bot={bot} onClose={vi.fn()} open />)
+    const input = screen.getByRole('textbox', { name: 'Name' }) as HTMLInputElement
+
+    fireEvent.change(input, { target: { value: '  New Name  ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+
+    await waitFor(() => expect(input.value).toBe('New Name'))
+
+    fireEvent.change(input, { target: { value: 'New Name  ' } })
+
+    expect(screen.getByRole('button', { name: 'Save name' })).toHaveProperty('disabled', true)
   })
 
   it('reports a failed remote name save with name copy and keeps the save retryable', async () => {
@@ -148,6 +233,44 @@ describe('bot details', () => {
 
     await waitFor(() => expect(notifyError).toHaveBeenCalledWith(failure, 'Could not save'))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save name' })).toHaveProperty('disabled', false))
+  })
+
+  it('keeps bot identity through a name save and roster refresh, then targets the saved profile', async () => {
+    const job: RoutineJob = {
+      enabled: true,
+      job_id: 'job-1',
+      name: 'Daily report',
+      schedule: 'every 1d',
+      state: 'scheduled'
+    }
+
+    const bot = { name: 'botdetail-test', title: 'Bot Detail Test' }
+
+    routinesState.current = { data: { jobs: [job], scoped: 'botdetail-test' }, error: null, isLoading: false }
+    const view = render(<BotDetailDialog bot={bot} onClose={vi.fn()} open />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'New Name' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+    await waitFor(() => expect(saveBotMeta).toHaveBeenCalledWith(bot, { title: 'New Name' }))
+
+    // The dialog takes one row, not the roster list, so there is no list order
+    // to permute here; a refresh is a NEW RosterRow object for the same bot.
+    view.rerender(<BotDetailDialog bot={{ name: 'botdetail-test', title: 'Refreshed' }} onClose={vi.fn()} open />)
+
+    expect(screen.getByText('botdetail-test')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('switch'))
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('cron.manage', {
+        action: 'pause',
+        name: 'job-1',
+        profile: 'botdetail-test'
+      })
+    )
+    expect(request).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the last good task list when a refresh fails', () => {

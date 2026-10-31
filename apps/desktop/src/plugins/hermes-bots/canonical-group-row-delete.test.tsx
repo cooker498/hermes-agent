@@ -8,16 +8,22 @@
  */
 
 import type * as HermesSdk from '@hermes/plugin-sdk'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { atom } from 'nanostores'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { translateBotsIn } from './i18n-test-helper'
 
-const { notify, requestProfile } = vi.hoisted(() => ({ notify: vi.fn(), requestProfile: vi.fn() }))
+const { gateway, notify, requestProfile } = vi.hoisted(() => ({
+  gateway: { current: null as null | { get: () => string; set: (value: string) => void } },
+  notify: vi.fn(),
+  requestProfile: vi.fn()
+}))
 
 vi.mock('@hermes/plugin-sdk', async importOriginal => {
   const sdk = await importOriginal<typeof HermesSdk>()
+  const gatewayAtom = atom('open')
+  gateway.current = gatewayAtom
 
   return {
     ...sdk,
@@ -25,7 +31,12 @@ vi.mock('@hermes/plugin-sdk', async importOriginal => {
       ...sdk.host,
       notify,
       requestProfile,
-      state: { ...sdk.host.state, connectionId: atom<null | string>('local'), profile: atom('default') }
+      state: {
+        ...sdk.host.state,
+        connectionId: atom<null | string>('local'),
+        gateway: gatewayAtom,
+        profile: atom('default')
+      }
     },
     usePluginI18n: () => translateBotsIn('en')
   }
@@ -69,6 +80,7 @@ afterEach(() => {
   cleanup()
   vi.clearAllMocks()
   $canonicalGroupBindings.set({})
+  gateway.current?.set('open')
   $groupChatWorkspace.set(null)
   dropGroupMainTab('Launch crew')
   dropGroupMainTab('Other crew')
@@ -111,6 +123,22 @@ it('keeps the row and shows the gateway refusal when the disband fails', async (
   expect(await dialog.findByText(/room is busy/)).toBeTruthy()
   expect(screen.getByRole('button', { hidden: true, name: 'Launch crew' })).toBeTruthy()
   expect(notify).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'success' }))
+})
+
+it('re-runs discovery when the gateway becomes connected', async () => {
+  gateway.current!.set('closed')
+  render(<CanonicalGroupList onOpen={vi.fn()} />)
+  await screen.findByRole('button', { name: 'Launch crew' })
+
+  const listedBefore = requestProfile.mock.calls.filter(([, method]) => method === 'groups.list').length
+
+  act(() => gateway.current!.set('open'))
+
+  await waitFor(() =>
+    expect(requestProfile.mock.calls.filter(([, method]) => method === 'groups.list').length).toBeGreaterThan(
+      listedBefore
+    )
+  )
 })
 
 it('closes the tab and selection opened under the room name, and leaves another room open', async () => {

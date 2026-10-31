@@ -545,14 +545,18 @@ export function RoutineDetailDialog({ job, onClose, open }: RoutineDetailDialogP
 
 interface RoutineRowProps {
   allowRemove?: boolean
+  /** The profile the surrounding UI claims to be showing. */
+  expectedProfile?: string
   job: RoutineJob
+  /** The job ids that were listed for that profile. */
+  knownJobIds?: readonly string[]
   onOpen?: (job: RoutineJob) => void
   /** The pane only renders rows once it has resolved an exact roster row, so
    *  this never sees the bare-name arm of RoutineOwner. */
   owner: RosterRow
 }
 
-export function RoutineRow({ allowRemove = true, job, onOpen, owner }: RoutineRowProps) {
+export function RoutineRow({ allowRemove = true, expectedProfile, job, knownJobIds, onOpen, owner }: RoutineRowProps) {
   const b = useBots()
   const { t } = useI18n()
   const c = t.cron
@@ -570,6 +574,16 @@ export function RoutineRow({ allowRemove = true, job, onOpen, owner }: RoutineRo
   }
 
   const act = async (action: 'pause' | 'remove' | 'resume') => {
+    if (
+      expectedProfile !== undefined &&
+      (normalizedProfileName(profile) !== normalizedProfileName(expectedProfile) ||
+        (knownJobIds !== undefined && !knownJobIds.includes(job.job_id)))
+    ) {
+      host.notifyError(new Error(`routine ${job.job_id} does not belong to ${expectedProfile}`), c.failedUpdate)
+
+      return
+    }
+
     if (busy) {
       return
     }
@@ -633,6 +647,8 @@ export function RoutineRow({ allowRemove = true, job, onOpen, owner }: RoutineRo
         </RowButton>
         <Switch
           checked={active}
+          data-job-id={job.job_id}
+          data-profile={profile ?? ''}
           disabled={busy || legacyUnsafe}
           onCheckedChange={value => act(value ? 'resume' : 'pause')}
         />

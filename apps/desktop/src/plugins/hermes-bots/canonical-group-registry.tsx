@@ -138,6 +138,7 @@ async function disbandListedRoom(room: ListedRoom, doneMessage: string): Promise
 export function CanonicalGroupList({ onOpen }: { onOpen: (key: string, origin: CanonicalGroupOrigin) => void }) {
   const labels = useCanonicalGroupLabels()
   const connectionId = useValue(host.state.connectionId)
+  const gatewayOpen = useValue(host.state.gateway) === 'open'
   const profile = useValue(host.state.profile)
   const [rooms, setRooms] = useState<ListedRoom[]>([])
   const [error, setError] = useState('')
@@ -162,7 +163,7 @@ export function CanonicalGroupList({ onOpen }: { onOpen: (key: string, origin: C
     })().catch(e => { if (!cancelled) {setError(e instanceof Error ? e.message : String(e))} })
 
     return () => { cancelled = true }
-  }, [connectionId, profile, refresh, revision])
+  }, [connectionId, gatewayOpen, profile, refresh, revision])
 
   return <div className="grid gap-1 px-2">
     <Button onClick={() => setRefresh(value => value + 1)} variant="ghost">{labels.refreshGroups}</Button>
