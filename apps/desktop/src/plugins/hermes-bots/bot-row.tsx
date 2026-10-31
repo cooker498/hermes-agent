@@ -7,7 +7,6 @@
  */
 
 import {
-  Button,
   cn,
   coarseElapsed,
   Codicon,
@@ -320,15 +319,20 @@ export function BotRow({ bot, onDelete, onDetails, onEdit, onGroup, onNewSection
           ) : null}
         </div>
       </RowButton>
-      <Button
+      {/* A plain button, not the Button primitive: its icon sizing rule shrinks
+          every descendant svg, which would collapse the avatar face. */}
+      <button
         aria-label={b.details.openAriaLabel}
-        className={cn('absolute top-1/2 left-2 -translate-y-1/2', !sourceStatus.available && 'grayscale opacity-60')}
+        className={cn(
+          'absolute top-1/2 left-2 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-md outline-none',
+          'focus-visible:ring-[0.1875rem] focus-visible:ring-ring/50',
+          !sourceStatus.available && 'grayscale opacity-60'
+        )}
         onClick={event => {
           event.stopPropagation()
           onDetails(bot)
         }}
-        size="icon"
-        variant="ghost"
+        type="button"
       >
         <BotFace
           color={avatarColor(color, bot.name)}
@@ -338,7 +342,7 @@ export function BotRow({ bot, onDelete, onDetails, onEdit, onGroup, onNewSection
           shape={shape}
           size={34}
         />
-      </Button>
+      </button>
     </div>
   )
 

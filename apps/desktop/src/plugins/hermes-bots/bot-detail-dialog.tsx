@@ -153,7 +153,12 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
           <section className="grid gap-3 border-t border-(--ui-stroke-tertiary) pt-4">
             <h3 className="text-sm font-semibold">{b.details.name}</h3>
             <div className="flex items-center gap-2">
-              <Input aria-label={b.details.name} onChange={event => setTitle(event.target.value)} value={title} />
+              <Input
+                aria-label={b.details.name}
+                onChange={event => setTitle(event.target.value)}
+                placeholder={displayName(bot, null)}
+                value={title}
+              />
               <Button
                 disabled={saving !== null || title.trim() === opened.title.trim()}
                 loading={saving === 'name'}
