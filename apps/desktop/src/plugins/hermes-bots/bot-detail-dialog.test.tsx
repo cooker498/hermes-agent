@@ -7,7 +7,8 @@ import type * as DataModule from './data'
 import { translateBotsIn } from './i18n-test-helper'
 import type { RoutineJob } from './types'
 
-const { notify, notifyError, routinesState, saveBotMeta } = vi.hoisted(() => ({
+const { locale, notify, notifyError, routinesState, saveBotMeta } = vi.hoisted(() => ({
+  locale: { current: 'en' as 'en' | 'zh' },
   notify: vi.fn(),
   notifyError: vi.fn(),
   routinesState: {
@@ -26,7 +27,7 @@ vi.mock('@hermes/plugin-sdk', async importOriginal => {
   return {
     ...sdk,
     host: { ...sdk.host, notify, notifyError },
-    usePluginI18n: () => translateBotsIn('en')
+    usePluginI18n: () => translateBotsIn(locale.current)
   }
 })
 
@@ -66,6 +67,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  locale.current = 'en'
   saveBotMeta.mockResolvedValue({ serverOutcome: 'persisted' })
   routinesState.current = { data: { jobs: [], scoped: 'research' }, error: null, isLoading: false }
 })
@@ -176,6 +178,58 @@ describe('bot details', () => {
 
     expect(screen.getByText('This bot’s connection was removed. Its details are read-only.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Open chat' })).toHaveProperty('disabled', true)
+  })
+  it('shows the task list on open, above the name and avatar, with no interaction', () => {
+    const job: RoutineJob = {
+      enabled: true,
+      job_id: 'daily-report',
+      name: 'Daily report',
+      schedule: '0 9 * * *',
+      state: 'scheduled'
+    }
+
+    routinesState.current = { data: { jobs: [job], scoped: 'research' }, error: null, isLoading: false }
+    render(<BotDetailDialog bot={{ name: 'research', title: 'Research' }} onClose={vi.fn()} open />)
+
+    const tasks = screen.getByRole('heading', { name: 'Tasks' })
+    const name = screen.getByRole('heading', { name: 'Name' })
+    const avatar = screen.getByRole('heading', { name: 'Avatar' })
+
+    expect(screen.getByText('Daily report')).toBeTruthy()
+    expect(screen.getByText('Every day at 09:00')).toBeTruthy()
+    expect(tasks.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(tasks.compareDocumentPosition(avatar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('renders Simplified Chinese copy under the zh locale', () => {
+    locale.current = 'zh'
+    render(<BotDetailDialog bot={{ name: 'research', title: 'Research' }} onClose={vi.fn()} open />)
+
+    for (const text of ['Bot 详情', '打开对话', '名称', '头像', '任务', '保存名称']) {
+      expect(screen.getAllByText(text).length).toBeGreaterThan(0)
+    }
+
+    expect(screen.queryByText('Bot 詳情')).toBeNull()
+  })
+})
+
+describe('cronExprLabel', () => {
+  it('spells out the common cron shapes with core copy', async () => {
+    const { cronExprLabel } = await import('./cron')
+
+    expect(cronExprLabel('0 9 * * *')).toBe('Every day at 09:00')
+    expect(cronExprLabel('30 8 * * 1-5')).toBe('Weekdays at 08:30')
+    expect(cronExprLabel('0 22 * * 1')).toMatch(/^Every .+ at 22:00$/)
+    expect(cronExprLabel('5 7 15 * *')).toBe('Monthly on day 15 at 07:05')
+    expect(cronExprLabel('0 * * * *')).toBe('At the top of every hour')
+  })
+
+  it('leaves anything else as the raw expression', async () => {
+    const { cronExprLabel } = await import('./cron')
+
+    expect(cronExprLabel('0 9 1 1 *')).toBeNull()
+    expect(cronExprLabel('*/5 * * * *')).toBeNull()
+    expect(cronExprLabel('every 30m')).toBeNull()
   })
 })
 

@@ -176,6 +176,38 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
             </Button>
           </div>
 
+          {/* Tasks sit right under the header: below the tall avatar picker they
+              were off-screen in the 90vh dialog until the picker shrank. */}
+          <section className="grid gap-3 border-t border-(--ui-stroke-tertiary) pt-4">
+            <h3 className="text-sm font-semibold">{b.details.tasks}</h3>
+            {routines.isLoading && !jobs.length ? (
+              <div className="flex min-h-20 items-center justify-center">
+                <GlyphSpinner ariaLabel={t.common.loading} className="text-(--ui-text-tertiary)" spinner="breathe" />
+              </div>
+            ) : routines.error && !jobs.length ? (
+              <div className="grid min-h-20 place-items-center gap-2 text-center text-sm text-(--ui-text-secondary)">
+                <span>{b.cron.readFailure}</span>
+                <Button onClick={() => void routines.refetch()} size="sm" variant="secondary">
+                  {t.common.retry}
+                </Button>
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="py-6 text-center text-sm text-(--ui-text-tertiary)">{b.details.noTasks}</div>
+            ) : (
+              <div className="grid gap-1.5">
+                {jobs.map(job => (
+                  <RoutineRow
+                    allowRemove={false}
+                    job={job}
+                    key={job.job_id}
+                    onOpen={selected => setDetailJobId(selected.job_id)}
+                    owner={bot}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
           <section className="grid gap-3 border-t border-(--ui-stroke-tertiary) pt-4">
             <h3 className="text-sm font-semibold">{b.details.name}</h3>
             <div className="flex items-center gap-2">
@@ -226,36 +258,6 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
                 {b.details.saveAvatar}
               </Button>
             </div>
-          </section>
-
-          <section className="grid gap-3 border-t border-(--ui-stroke-tertiary) pt-4">
-            <h3 className="text-sm font-semibold">{b.details.tasks}</h3>
-            {routines.isLoading && !jobs.length ? (
-              <div className="flex min-h-20 items-center justify-center">
-                <GlyphSpinner ariaLabel={t.common.loading} className="text-(--ui-text-tertiary)" spinner="breathe" />
-              </div>
-            ) : routines.error && !jobs.length ? (
-              <div className="grid min-h-20 place-items-center gap-2 text-center text-sm text-(--ui-text-secondary)">
-                <span>{b.cron.readFailure}</span>
-                <Button onClick={() => void routines.refetch()} size="sm" variant="secondary">
-                  {t.common.retry}
-                </Button>
-              </div>
-            ) : jobs.length === 0 ? (
-              <div className="py-6 text-center text-sm text-(--ui-text-tertiary)">{b.details.noTasks}</div>
-            ) : (
-              <div className="grid gap-1.5">
-                {jobs.map(job => (
-                  <RoutineRow
-                    allowRemove={false}
-                    job={job}
-                    key={job.job_id}
-                    onOpen={selected => setDetailJobId(selected.job_id)}
-                    owner={bot}
-                  />
-                ))}
-              </div>
-            )}
           </section>
         </div>
 

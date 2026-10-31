@@ -85,10 +85,16 @@ describe('the facts the row never showed', () => {
     expect(valueOf(routineDetailRows(activeJob), 'Schedule (raw)')).toBe('every 1440m')
 
     // A schedule the label passes through unchanged would only be duplicated.
-    const passthrough = routineDetailRows({ ...activeJob, schedule: '0 9 * * 1-5' })
+    const passthrough = routineDetailRows({ ...activeJob, schedule: '0 9 1 1 *' })
 
     expect(valueOf(passthrough, 'Schedule (raw)')).toBeUndefined()
-    expect(valueOf(passthrough, 'Schedule')).toBe('0 9 * * 1-5')
+    expect(valueOf(passthrough, 'Schedule')).toBe('0 9 1 1 *')
+
+    // A common cron shape is spelled out, and the raw expression stays alongside.
+    const weekdays = routineDetailRows({ ...activeJob, schedule: '0 9 * * 1-5' })
+
+    expect(valueOf(weekdays, 'Schedule')).toBe('Weekdays at 09:00')
+    expect(valueOf(weekdays, 'Schedule (raw)')).toBe('0 9 * * 1-5')
   })
 
   it('explains a failing or scheduler-paused job in failure order', () => {

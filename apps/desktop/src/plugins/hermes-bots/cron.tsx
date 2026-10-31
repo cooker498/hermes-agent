@@ -333,7 +333,60 @@ function scheduleLabel(schedule: string | undefined): string {
     return c.everyNMinutes(minutes)
   }
 
-  return schedule || ''
+  return cronExprLabel(schedule || '') ?? (schedule || '')
+}
+
+const CRON_NUMBER = /^\d+$/
+
+/** Spell out the common five-field cron shapes ("0 9 * * *" -> core's
+ *  "Every day at 09:00") with core's own cron vocabulary. Anything else
+ *  (ranges, steps, specific months) stays the raw expression. */
+export function cronExprLabel(expr: string): null | string {
+  const parts = expr.trim().split(/\s+/)
+
+  if (parts.length !== 5) {
+    return null
+  }
+
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = parts
+
+  if (month !== '*' || !CRON_NUMBER.test(minute)) {
+    return null
+  }
+
+  const mm = minute.padStart(2, '0')
+
+  if (hour === '*') {
+    return dayOfMonth === '*' && dayOfWeek === '*'
+      ? minute === '0'
+        ? translateNow('cron.topOfHour')
+        : translateNow('cron.everyHourAt', mm)
+      : null
+  }
+
+  if (!CRON_NUMBER.test(hour) || Number(hour) > 23 || Number(minute) > 59) {
+    return null
+  }
+
+  const time = `${hour.padStart(2, '0')}:${mm}`
+
+  if (dayOfMonth === '*' && dayOfWeek === '*') {
+    return translateNow('cron.everyDayAt', time)
+  }
+
+  if (dayOfMonth === '*' && dayOfWeek === '1-5') {
+    return translateNow('cron.weekdaysAt', time)
+  }
+
+  if (dayOfMonth === '*' && /^[0-7]$/.test(dayOfWeek)) {
+    return translateNow('cron.everyDayOfWeekAt', translateNow(`cron.days.${dayOfWeek}`), time)
+  }
+
+  if (dayOfWeek === '*' && CRON_NUMBER.test(dayOfMonth)) {
+    return translateNow('cron.monthlyOnDayAt', dayOfMonth, time)
+  }
+
+  return null
 }
 
 /** Absolute + relative rendering of a cron timestamp, or null when the job
