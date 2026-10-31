@@ -194,6 +194,19 @@ export type BotsMessages = {
     /** First line of a brand-new bot's forever-chat — see `kickoffText`. */
     kickoff: string
   }
+  /** Bot details page: identity, editable look, and owned scheduled tasks. */
+  details: {
+    menuItem: string
+    dialogTitle: string
+    openChat: string
+    name: string
+    avatar: string
+    tasks: string
+    noTasks: string
+    saveName: string
+    saveAvatar: string
+    openAriaLabel: string
+  }
   /** Avatar picker: shapes, blobs, pets, uploads, generation. */
   avatar: {
     classicShapes: string

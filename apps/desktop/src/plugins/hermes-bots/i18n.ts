@@ -223,6 +223,18 @@ const en: BotsMessages = {
     chatEmpty: 'Say something to get started.',
     kickoff: 'Hey, tell me about yourself!'
   },
+  details: {
+    menuItem: 'Details',
+    dialogTitle: 'Bot details',
+    openChat: 'Open chat',
+    name: 'Name',
+    avatar: 'Avatar',
+    tasks: 'Tasks',
+    noTasks: 'No tasks',
+    saveName: 'Save name',
+    saveAvatar: 'Save avatar',
+    openAriaLabel: 'Open bot details'
+  },
   avatar: {
     classicShapes: 'Classic shapes',
     blobFromName: 'Blob face — drawn from the bot’s name',
@@ -666,6 +678,18 @@ const ja: BotsMessages = {
     chatEmpty: '何か書いて始めましょう。',
     kickoff: 'こんにちは、自己紹介をしてください！'
   },
+  details: {
+    menuItem: '詳細',
+    dialogTitle: 'ボットの詳細',
+    openChat: 'チャットを開く',
+    name: '名前',
+    avatar: 'アバター',
+    tasks: 'タスク',
+    noTasks: 'タスクはありません',
+    saveName: '名前を保存',
+    saveAvatar: 'アバターを保存',
+    openAriaLabel: 'ボットの詳細を開く'
+  },
   avatar: {
     classicShapes: 'クラシックシェイプ',
     blobFromName: 'ブロブ顔 — ボットの名前から描画',
@@ -1102,6 +1126,18 @@ const zh: BotsMessages = {
     chatEmpty: '说点什么开始吧。',
     kickoff: '你好，介绍一下你自己吧！'
   },
+  details: {
+    menuItem: '详情',
+    dialogTitle: 'Bot 详情',
+    openChat: '打开对话',
+    name: '名称',
+    avatar: '头像',
+    tasks: '任务',
+    noTasks: '暂无任务',
+    saveName: '保存名称',
+    saveAvatar: '保存头像',
+    openAriaLabel: '打开 Bot 详情'
+  },
   avatar: {
     classicShapes: '经典形状',
     blobFromName: '斑点脸 — 根据机器人名称绘制',
@@ -1530,6 +1566,18 @@ const zhHant: BotsMessages = {
     openGateways: '開啟閘道',
     chatEmpty: '說點什麼開始吧。',
     kickoff: '你好，介紹一下你自己吧！'
+  },
+  details: {
+    menuItem: '詳情',
+    dialogTitle: 'Bot 詳情',
+    openChat: '開啟對話',
+    name: '名稱',
+    avatar: '頭像',
+    tasks: '任務',
+    noTasks: '暫無任務',
+    saveName: '儲存名稱',
+    saveAvatar: '儲存頭像',
+    openAriaLabel: '開啟 Bot 詳情'
   },
   avatar: {
     classicShapes: '經典形狀',

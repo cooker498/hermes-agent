@@ -241,6 +241,7 @@ export function BotsPane() {
   const activeConnectionId = host.state.connectionId?.get?.() || 'local'
   const [createOpen, setCreateOpen] = useState(false)
   const [groupCreateOpen, setGroupCreateOpen] = useState(false)
+  const [detailBot, setDetailBot] = useState<null | RosterRow>(null)
   const [editing, setEditing] = useState<null | RosterRow>(null)
   // `path` is the profile directory the gateway reports on a profiles.list row;
   // it is not part of the shared RosterRow model, so it rides as an extra here.
@@ -429,6 +430,7 @@ export function BotsPane() {
       bot={bot}
       key={`${keyPrefix}${botRosterKey(bot)}`}
       onDelete={setDeleting}
+      onDetails={setDetailBot}
       onEdit={setEditing}
       onGroup={setGrouping}
       onNewSection={target => setSectionDialog({ bot: target, mode: 'create' })}
@@ -531,6 +533,8 @@ export function BotsPane() {
         setCreateOpen,
         groupCreateOpen,
         setGroupCreateOpen,
+        detailBot,
+        setDetailBot,
         editing,
         setEditing,
         deleting,

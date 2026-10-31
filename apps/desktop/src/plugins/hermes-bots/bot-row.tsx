@@ -7,6 +7,7 @@
  */
 
 import {
+  Button,
   cn,
   coarseElapsed,
   Codicon,
@@ -106,6 +107,7 @@ function rowAge(ms: number, r: SidebarRowLabels): string {
 interface BotRowProps {
   bot: RosterRow
   onDelete: (bot: RosterRow) => void
+  onDetails: (bot: RosterRow) => void
   onEdit: (bot: RosterRow) => void
   onGroup: (bot: RosterRow) => void
   /** Opens the New section dialog; the bot is filed into it on create. */
@@ -113,7 +115,7 @@ interface BotRowProps {
   showHandle?: boolean
 }
 
-export function BotRow({ bot, onDelete, onEdit, onGroup, onNewSection, showHandle }: BotRowProps) {
+export function BotRow({ bot, onDelete, onDetails, onEdit, onGroup, onNewSection, showHandle }: BotRowProps) {
   const { t } = useI18n()
   const b = useBots()
   const focusedOwner = focusedRosterOwner(useValue($focusedBotOwner))
@@ -242,29 +244,92 @@ export function BotRow({ bot, onDelete, onEdit, onGroup, onNewSection, showHandl
   const currentSectionId = botSectionId(bot, allMeta)
 
   const row = (
-    <RowButton
-      aria-busy={isOpening || undefined}
-      aria-label={rowTooltip}
-      className={cn(
-        'flex w-full min-w-0 max-w-full items-center gap-2.5 overflow-hidden rounded-md px-2 py-2 text-left transition-colors',
-        'hover:bg-(--chrome-action-hover)',
-        isActive && 'bg-(--ui-row-active-background)',
-        // The row being dragged fades in place; the browser's drag image is
-        // the row itself, so the ghost under the pointer is the full row.
-        dragging && 'opacity-40'
-      )}
-      data-roster-key={rosterKey}
-      draggable
-      onClick={open}
-      onDragEnd={() => $draggingBot.set(null)}
-      onDragStart={event => {
-        event.dataTransfer.setData(BOT_DRAG_MIME, rosterKey)
-        event.dataTransfer.effectAllowed = 'move'
-        $draggingBot.set(rosterKey)
-      }}
-      onPointerEnter={warm}
-    >
-      <div className={cn('shrink-0', !sourceStatus.available && 'grayscale opacity-60')}>
+    <div className="group relative" onPointerEnter={warm}>
+      <RowButton
+        aria-busy={isOpening || undefined}
+        aria-label={rowTooltip}
+        className={cn(
+          'flex w-full min-w-0 max-w-full items-center gap-2.5 overflow-hidden rounded-md px-2 py-2 text-left transition-colors',
+          'hover:bg-(--chrome-action-hover) group-hover:bg-(--chrome-action-hover)',
+          isActive && 'bg-(--ui-row-active-background)',
+          // The row being dragged fades in place; the browser's drag image is
+          // the row itself, so the ghost under the pointer is the full row.
+          dragging && 'opacity-40'
+        )}
+        data-roster-key={rosterKey}
+        draggable
+        onClick={open}
+        onDragEnd={() => $draggingBot.set(null)}
+        onDragStart={event => {
+          event.dataTransfer.setData(BOT_DRAG_MIME, rosterKey)
+          event.dataTransfer.effectAllowed = 'move'
+          $draggingBot.set(rosterKey)
+        }}
+      >
+        <div aria-hidden className="size-9 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
+              {/* The session row's own lead cell, so a bot's name sits on the
+                  same left edge as every session name above it in the rail. */}
+              <SidebarRowLead>
+                <SessionStatusDot storedSessionId={canonicalSessionId} />
+              </SidebarRowLead>
+              {pinned ? (
+                <Tip label={b.roster.pinned}>
+                  <Codicon className="shrink-0 text-[0.6875rem] text-(--ui-text-quaternary)" name="pinned" />
+                </Tip>
+              ) : null}
+              {hidden ? (
+                <Tip label={b.roster.hiddenFromRoster}>
+                  <Codicon className="shrink-0 text-[0.6875rem] text-(--ui-text-quaternary)" name="eye-closed" />
+                </Tip>
+              ) : null}
+              <Tip label={rowTooltip}>
+                <span className="min-w-0 truncate text-[0.8125rem] font-medium">{displayName(bot, meta)}</span>
+              </Tip>
+            </div>
+            {attention ? (
+              <Tip label={botAttentionHint(attention.reason)}>
+                <Codicon
+                  aria-label={b.roster.needsAttention}
+                  className="shrink-0 text-[0.6875rem] text-amber-600 dark:text-amber-300"
+                  name="warning"
+                />
+              </Tip>
+            ) : null}
+            {isOpening ? (
+              <GlyphSpinner ariaLabel={b.bot.openingChat} className="shrink-0 text-xs text-(--ui-text-secondary)" />
+            ) : null}
+            {rowAgeTs ? (
+              <span className="shrink-0 text-[0.6875rem] text-(--ui-text-quaternary)">
+                {rowAge(rowAgeTs * 1000, t.sidebar.row)}
+              </span>
+            ) : null}
+          </div>
+          {showDetailsRow ? (
+            <div className="flex min-w-0 items-center gap-1.5 text-xs text-(--ui-text-tertiary)">
+              {showHandle ? (
+                <span className="shrink-0 font-mono text-[0.6875rem] text-(--ui-text-quaternary)">{`@${handle}`}</span>
+              ) : null}
+              {showHandle && displayPreview ? <span className="shrink-0 text-(--ui-text-quaternary)">·</span> : null}
+              {displayPreview ? (
+                <span className={cn('min-w-0 truncate', fromBot && 'italic')}>{displayPreview}</span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </RowButton>
+      <Button
+        aria-label={b.details.openAriaLabel}
+        className={cn('absolute top-1/2 left-2 -translate-y-1/2', !sourceStatus.available && 'grayscale opacity-60')}
+        onClick={event => {
+          event.stopPropagation()
+          onDetails(bot)
+        }}
+        size="icon"
+        variant="ghost"
+      >
         <BotFace
           color={avatarColor(color, bot.name)}
           image={photo ? image : null}
@@ -273,60 +338,8 @@ export function BotRow({ bot, onDelete, onEdit, onGroup, onNewSection, showHandl
           shape={shape}
           size={34}
         />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            {/* The session row's own lead cell, so a bot's name sits on the
-                same left edge as every session name above it in the rail. */}
-            <SidebarRowLead>
-              <SessionStatusDot storedSessionId={canonicalSessionId} />
-            </SidebarRowLead>
-            {pinned ? (
-              <Tip label={b.roster.pinned}>
-                <Codicon className="shrink-0 text-[0.6875rem] text-(--ui-text-quaternary)" name="pinned" />
-              </Tip>
-            ) : null}
-            {hidden ? (
-              <Tip label={b.roster.hiddenFromRoster}>
-                <Codicon className="shrink-0 text-[0.6875rem] text-(--ui-text-quaternary)" name="eye-closed" />
-              </Tip>
-            ) : null}
-            <Tip label={rowTooltip}>
-              <span className="min-w-0 truncate text-[0.8125rem] font-medium">{displayName(bot, meta)}</span>
-            </Tip>
-          </div>
-          {attention ? (
-            <Tip label={botAttentionHint(attention.reason)}>
-              <Codicon
-                aria-label={b.roster.needsAttention}
-                className="shrink-0 text-[0.6875rem] text-amber-600 dark:text-amber-300"
-                name="warning"
-              />
-            </Tip>
-          ) : null}
-          {isOpening ? (
-            <GlyphSpinner ariaLabel={b.bot.openingChat} className="shrink-0 text-xs text-(--ui-text-secondary)" />
-          ) : null}
-          {rowAgeTs ? (
-            <span className="shrink-0 text-[0.6875rem] text-(--ui-text-quaternary)">
-              {rowAge(rowAgeTs * 1000, t.sidebar.row)}
-            </span>
-          ) : null}
-        </div>
-        {showDetailsRow ? (
-          <div className="flex min-w-0 items-center gap-1.5 text-xs text-(--ui-text-tertiary)">
-            {showHandle ? (
-              <span className="shrink-0 font-mono text-[0.6875rem] text-(--ui-text-quaternary)">{`@${handle}`}</span>
-            ) : null}
-            {showHandle && displayPreview ? <span className="shrink-0 text-(--ui-text-quaternary)">·</span> : null}
-            {displayPreview ? (
-              <span className={cn('min-w-0 truncate', fromBot && 'italic')}>{displayPreview}</span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    </RowButton>
+      </Button>
+    </div>
   )
 
   return (
@@ -335,6 +348,7 @@ export function BotRow({ bot, onDelete, onEdit, onGroup, onNewSection, showHandl
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => void openRosterBot(bot)}>{b.bot.openBotChat}</ContextMenuItem>
         <ContextMenuItem onSelect={() => void openRosterBot(bot, { intent: 'tab' })}>{b.bot.openBotChatInNewTab}</ContextMenuItem>
+        <ContextMenuItem onSelect={() => onDetails(bot)}>{b.details.menuItem}</ContextMenuItem>
         <ContextMenuItem onSelect={() => openBotScreen(bot, meta)}>{b.screen.menu}</ContextMenuItem>
         <ContextMenuCheckboxItem
           checked={Boolean(meta?.screenAutoOpen)}

@@ -60,9 +60,11 @@ vi.mock('./roster-actions', () => ({ openRosterBot }))
 const noop = () => undefined
 
 function renderRow(bot: RosterRow) {
-  render(<BotRow bot={bot} onDelete={noop} onEdit={noop} onGroup={noop} onNewSection={noop} />)
+  const { container } = render(
+    <BotRow bot={bot} onDelete={noop} onDetails={noop} onEdit={noop} onGroup={noop} onNewSection={noop} />
+  )
 
-  return screen.getByRole('button')
+  return container.querySelector('[data-roster-key]') as HTMLButtonElement
 }
 
 beforeEach(() => {
@@ -83,7 +85,15 @@ describe('group-turn presence', () => {
     const { container } = render(
       <>
         {[local, remote].map(bot => (
-          <BotRow bot={bot} key={bot.connectionId} onDelete={noop} onEdit={noop} onGroup={noop} onNewSection={noop} />
+          <BotRow
+            bot={bot}
+            key={bot.connectionId}
+            onDelete={noop}
+            onDetails={noop}
+            onEdit={noop}
+            onGroup={noop}
+            onNewSection={noop}
+          />
         ))}
       </>
     )
@@ -127,6 +137,27 @@ describe('pre-warm is hover-scoped, never roster-wide', () => {
 })
 
 describe('the row delegates the open and claims no activation authority', () => {
+  it('opens details from the avatar without opening chat', () => {
+    const bot = { name: 'alpha' } as RosterRow
+    const onDetails = vi.fn()
+
+    render(
+      <BotRow
+        bot={bot}
+        onDelete={noop}
+        onDetails={onDetails}
+        onEdit={noop}
+        onGroup={noop}
+        onNewSection={noop}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open bot details' }))
+
+    expect(onDetails).toHaveBeenCalledWith(bot)
+    expect(openRosterBot).not.toHaveBeenCalled()
+  })
+
   it('hands a remote Connections row to openRosterBot without activating it', async () => {
     const bot = {
       connectionId: 'work',

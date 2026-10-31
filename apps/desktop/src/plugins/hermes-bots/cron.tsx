@@ -171,7 +171,7 @@ export async function loadRoutines(owner: RoutineOwner): Promise<RoutineListResu
   }
 }
 
-function useRoutines(owner: RoutineOwner) {
+export function useRoutines(owner: RoutineOwner) {
   const bot =
     typeof owner === 'string'
       ? {
@@ -480,6 +480,7 @@ export function RoutineDetailDialog({ job, onClose, open }: RoutineDetailDialogP
 }
 
 interface RoutineRowProps {
+  allowRemove?: boolean
   job: RoutineJob
   onOpen?: (job: RoutineJob) => void
   /** The pane only renders rows once it has resolved an exact roster row, so
@@ -487,7 +488,7 @@ interface RoutineRowProps {
   owner: RosterRow
 }
 
-export function RoutineRow({ job, onOpen, owner }: RoutineRowProps) {
+export function RoutineRow({ allowRemove = true, job, onOpen, owner }: RoutineRowProps) {
   const b = useBots()
   const { t } = useI18n()
   const c = t.cron
@@ -571,18 +572,20 @@ export function RoutineRow({ job, onOpen, owner }: RoutineRowProps) {
           disabled={busy || legacyUnsafe}
           onCheckedChange={value => act(value ? 'resume' : 'pause')}
         />
-        <Tip label={t.common.delete}>
-          <Button
-            aria-label={t.common.delete}
-            className="opacity-0 transition-opacity group-hover:opacity-100"
-            disabled={busy}
-            onClick={() => act('remove')}
-            size="icon-xs"
-            variant="ghost"
-          >
-            <Codicon name="trash" />
-          </Button>
-        </Tip>
+        {allowRemove ? (
+          <Tip label={t.common.delete}>
+            <Button
+              aria-label={t.common.delete}
+              className="opacity-0 transition-opacity group-hover:opacity-100"
+              disabled={busy}
+              onClick={() => act('remove')}
+              size="icon-xs"
+              variant="ghost"
+            >
+              <Codicon name="trash" />
+            </Button>
+          </Tip>
+        ) : null}
       </div>
       {/* The schedule pill and the next-run label keep their words: when the
           pane can't fit both on one line the next-run label wraps to a second

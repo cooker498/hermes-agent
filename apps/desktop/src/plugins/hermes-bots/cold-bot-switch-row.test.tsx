@@ -4,7 +4,7 @@
  */
 
 import type * as HermesSdk from '@hermes/plugin-sdk'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { BotRow } from './bot-row'
@@ -35,20 +35,20 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  cleanup()
   $pendingBotOpen.set(null)
   $selectedRosterKey.set('')
-  cleanup()
 })
 
 it('spins the pending target row without stealing the highlight', () => {
-  render(
+  const { container } = render(
     <>
-      <BotRow bot={alpha} onDelete={noop} onEdit={noop} onGroup={noop} onNewSection={noop} />
-      <BotRow bot={bravo} onDelete={noop} onEdit={noop} onGroup={noop} onNewSection={noop} />
+      <BotRow bot={alpha} onDelete={noop} onDetails={noop} onEdit={noop} onGroup={noop} onNewSection={noop} />
+      <BotRow bot={bravo} onDelete={noop} onDetails={noop} onEdit={noop} onGroup={noop} onNewSection={noop} />
     </>
   )
 
-  const [alphaRow, bravoRow] = screen.getAllByRole('button')
+  const [alphaRow, bravoRow] = container.querySelectorAll('[data-roster-key]')
 
   expect(bravoRow.getAttribute('aria-busy')).toBe('true')
   expect(bravoRow.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Opening chat…')

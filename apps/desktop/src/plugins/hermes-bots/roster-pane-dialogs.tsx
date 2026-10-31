@@ -1,6 +1,7 @@
 import { ConfirmDialog, host } from '@hermes/plugin-sdk'
 import type { useI18n } from '@hermes/plugin-sdk'
 
+import { BotDetailDialog } from './bot-detail-dialog'
 import { CreateAgentDialog, CreateGroupChatDialog, GroupDialog } from './create-dialog'
 import type { useRoster } from './data'
 import { EditProfileDialog } from './edit-profile-dialog'
@@ -18,6 +19,8 @@ interface renderRosterDialogsProps {
   setCreateOpen: (value: boolean) => void
   groupCreateOpen: boolean
   setGroupCreateOpen: (value: boolean) => void
+  detailBot: RosterRow | null
+  setDetailBot: (value: RosterRow | null) => void
   editing: RosterRow | null
   setEditing: (value: RosterRow | null) => void
   deleting: (RosterRow & { path?: string }) | null
@@ -40,6 +43,8 @@ export function renderRosterDialogs({
   setCreateOpen,
   groupCreateOpen,
   setGroupCreateOpen,
+  detailBot,
+  setDetailBot,
   editing,
   setEditing,
   deleting,
@@ -93,6 +98,7 @@ export function renderRosterDialogs({
         }}
         open={Boolean(sectionDialog)}
       />
+      <BotDetailDialog bot={detailBot} onClose={() => setDetailBot(null)} open={Boolean(detailBot)} />
       <EditProfileDialog
         bot={editing}
         onClose={() => {
