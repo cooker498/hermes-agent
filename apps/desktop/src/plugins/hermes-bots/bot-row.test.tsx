@@ -19,7 +19,7 @@ import type * as HermesSdk from '@hermes/plugin-sdk'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { BotRow } from './bot-row'
+import { BotRow, localGatewayLabel } from './bot-row'
 import { $groupChats } from './group-chat'
 import { translateBotsIn } from './i18n-test-helper'
 import type { RosterRow } from './types'
@@ -276,5 +276,27 @@ describe('age label reflects the last worker run, not only the last conversation
     } as RosterRow)
 
     expect(screen.getByText('3d')).toBeTruthy()
+  })
+})
+
+describe('localGatewayLabel', () => {
+  it('localizes the default local label', () => {
+    expect(localGatewayLabel('This device', 'local', '本设备')).toBe('本设备')
+  })
+
+  it('localizes a missing local label', () => {
+    expect(localGatewayLabel(undefined, 'local', '本设备')).toBe('本设备')
+  })
+
+  it('keeps a user-chosen local label', () => {
+    expect(localGatewayLabel('我的Mac', 'local', '本设备')).toBe('我的Mac')
+  })
+
+  it('keeps a remote label', () => {
+    expect(localGatewayLabel('Office', 'remote-1', '本设备')).toBe('Office')
+  })
+
+  it('renders no remote label when absent', () => {
+    expect(localGatewayLabel(undefined, 'remote-1', '本设备')).toBe('')
   })
 })

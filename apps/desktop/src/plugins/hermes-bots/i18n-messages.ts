@@ -206,11 +206,21 @@ export type BotsMessages = {
     saveName: string
     saveAvatar: string
     openAriaLabel: string
+    /** Status shown while a name/avatar save is in flight (the dialog can't close meanwhile). */
+    saving: string
+    /** The name was kept locally but the gateway refused to persist it. */
+    nameSavedLocally: string
+    /** A save threw before any outcome was known. */
+    saveFailed: string
+    /** The bot's connection was removed: read-only, cannot open its chat. */
+    ownerRemoved: string
   }
   /** Avatar picker: shapes, blobs, pets, uploads, generation. */
   avatar: {
     classicShapes: string
     blobFromName: string
+    /** Accessible names of the shape buttons, keyed by shape id. */
+    shapeNames: Record<string, string>
     unlockFollowsName: string
     randomize: string
     /** The picker's four tabs, in order. */

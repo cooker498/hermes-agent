@@ -103,6 +103,21 @@ function rowAge(ms: number, r: SidebarRowLabels): string {
   return unit === 'second' ? r.ageNow : `${value}${unit === 'day' ? r.ageDay : unit === 'hour' ? r.ageHour : r.ageMin}`
 }
 
+/** The gateway label a row shows. Electron's default local label is the English
+ *  "This device", so local rows with that (or no) label fall back to the
+ *  localized name; any user-chosen label stays untouched. */
+export function localGatewayLabel(
+  label: string | undefined,
+  connectionId: string | undefined,
+  thisDevice: string
+): string {
+  if (connectionId === 'local' && (!label || label === 'This device')) {
+    return thisDevice
+  }
+
+  return label || ''
+}
+
 interface BotRowProps {
   bot: RosterRow
   onDelete: (bot: RosterRow) => void
@@ -196,7 +211,7 @@ export function BotRow({ bot, onDelete, onDetails, onEdit, onGroup, onNewSection
   )
 
   const handle = botHandle(bot.name, bot)
-  const gatewayLabel = bot.connectionLabel || (bot.connectionId === 'local' ? b.bot.thisDevice : '')
+  const gatewayLabel = localGatewayLabel(bot.connectionLabel, bot.connectionId, b.bot.thisDevice)
   const showDetailsRow = Boolean(showHandle || displayPreview || fromBot)
 
   const rowTooltip = [displayName(bot, meta), `@${handle}`, gatewayLabel, sourceStatus.label]

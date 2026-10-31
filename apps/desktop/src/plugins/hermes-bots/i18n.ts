@@ -233,11 +233,25 @@ const en: BotsMessages = {
     noTasks: 'No tasks',
     saveName: 'Save name',
     saveAvatar: 'Save avatar',
-    openAriaLabel: 'Open bot details'
+    openAriaLabel: 'Open bot details',
+    saving: 'Saving… the dialog can be closed when it finishes.',
+    nameSavedLocally: 'Saved name locally; remote persistence failed',
+    saveFailed: 'Could not save',
+    ownerRemoved: 'This bot’s connection was removed. Its details are read-only.'
   },
   avatar: {
     classicShapes: 'Classic shapes',
     blobFromName: 'Blob face — drawn from the bot’s name',
+    shapeNames: {
+      circle: 'Circle',
+      blob: 'Blob',
+      squircle: 'Squircle',
+      pill: 'Pill',
+      triangle: 'Triangle',
+      hexagon: 'Hexagon',
+      cloud: 'Cloud',
+      drop: 'Drop'
+    },
     unlockFollowsName: 'Unlock — the face follows the bot’s name again',
     randomize: 'Randomize',
     tabBot: 'Bot',
@@ -688,11 +702,25 @@ const ja: BotsMessages = {
     noTasks: 'タスクはありません',
     saveName: '名前を保存',
     saveAvatar: 'アバターを保存',
-    openAriaLabel: 'ボットの詳細を開く'
+    openAriaLabel: 'ボットの詳細を開く',
+    saving: '保存中… 完了するとダイアログを閉じられます。',
+    nameSavedLocally: '名前はローカルに保存されましたが、リモートへの保存に失敗しました',
+    saveFailed: '保存できませんでした',
+    ownerRemoved: 'このボットの接続は削除されています。詳細は閲覧のみです。'
   },
   avatar: {
     classicShapes: 'クラシックシェイプ',
     blobFromName: 'ブロブ顔 — ボットの名前から描画',
+    shapeNames: {
+      circle: '円',
+      blob: 'ブロブ',
+      squircle: 'スクワークル',
+      pill: 'ピル',
+      triangle: '三角形',
+      hexagon: '六角形',
+      cloud: '雲',
+      drop: 'しずく'
+    },
     unlockFollowsName: 'ロック解除 — 顔がボットの名前に再び追従します',
     randomize: 'ランダム',
     tabBot: 'ボット',
@@ -1136,11 +1164,25 @@ const zh: BotsMessages = {
     noTasks: '暂无任务',
     saveName: '保存名称',
     saveAvatar: '保存头像',
-    openAriaLabel: '打开 Bot 详情'
+    openAriaLabel: '打开 Bot 详情',
+    saving: '正在保存…保存完成后才能关闭。',
+    nameSavedLocally: '名称已保存在本地；远程持久化失败',
+    saveFailed: '保存失败',
+    ownerRemoved: '这个 Bot 的连接已被删除，详情只能查看。'
   },
   avatar: {
     classicShapes: '经典形状',
     blobFromName: '斑点脸 — 根据机器人名称绘制',
+    shapeNames: {
+      circle: '圆形',
+      blob: '斑点',
+      squircle: '圆角方形',
+      pill: '胶囊',
+      triangle: '三角形',
+      hexagon: '六边形',
+      cloud: '云朵',
+      drop: '水滴'
+    },
     unlockFollowsName: '解锁 — 面孔再次跟随机器人名称',
     randomize: '随机',
     tabBot: '机器人',
@@ -1577,11 +1619,25 @@ const zhHant: BotsMessages = {
     noTasks: '暫無任務',
     saveName: '儲存名稱',
     saveAvatar: '儲存頭像',
-    openAriaLabel: '開啟 Bot 詳情'
+    openAriaLabel: '開啟 Bot 詳情',
+    saving: '正在儲存…儲存完成後才能關閉。',
+    nameSavedLocally: '名稱已儲存在本機；遠端持久化失敗',
+    saveFailed: '儲存失敗',
+    ownerRemoved: '這個 Bot 的連線已被刪除，詳情只能檢視。'
   },
   avatar: {
     classicShapes: '經典形狀',
     blobFromName: '斑點臉 — 依機器人名稱繪製',
+    shapeNames: {
+      circle: '圓形',
+      blob: '斑點',
+      squircle: '圓角方形',
+      pill: '膠囊',
+      triangle: '三角形',
+      hexagon: '六邊形',
+      cloud: '雲朵',
+      drop: '水滴'
+    },
     unlockFollowsName: '解鎖 — 面孔再次跟隨機器人名稱',
     randomize: '隨機',
     tabBot: '機器人',

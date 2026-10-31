@@ -7,7 +7,16 @@ import type * as DataModule from './data'
 import { translateBotsIn } from './i18n-test-helper'
 import type { RoutineJob } from './types'
 
-const { saveBotMeta } = vi.hoisted(() => ({
+const { notify, notifyError, routinesState, saveBotMeta } = vi.hoisted(() => ({
+  notify: vi.fn(),
+  notifyError: vi.fn(),
+  routinesState: {
+    current: {
+      data: { jobs: [], scoped: 'research' } as unknown,
+      error: null as unknown,
+      isLoading: false
+    }
+  },
   saveBotMeta: vi.fn()
 }))
 
@@ -16,6 +25,7 @@ vi.mock('@hermes/plugin-sdk', async importOriginal => {
 
   return {
     ...sdk,
+    host: { ...sdk.host, notify, notifyError },
     usePluginI18n: () => translateBotsIn('en')
   }
 })
@@ -39,9 +49,7 @@ vi.mock('./cron', async importOriginal => {
   return {
     ...cron,
     useRoutines: () => ({
-      data: { jobs: [], scoped: 'research' },
-      error: null,
-      isLoading: false,
+      ...routinesState.current,
       refetch: vi.fn()
     })
   }
@@ -59,6 +67,7 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   saveBotMeta.mockResolvedValue({ serverOutcome: 'persisted' })
+  routinesState.current = { data: { jobs: [], scoped: 'research' }, error: null, isLoading: false }
 })
 
 afterEach(() => {
@@ -91,5 +100,97 @@ describe('bot details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
 
     await waitFor(() => expect(saveBotMeta).toHaveBeenCalledWith(bot, { title: 'Analyst' }))
+  })
+
+  it('trims the name it saves', async () => {
+    const bot = { name: 'research', title: 'Research' }
+
+    render(<BotDetailDialog bot={bot} onClose={vi.fn()} open />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: '  Analyst  ' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+
+    await waitFor(() => expect(saveBotMeta).toHaveBeenCalledWith(bot, { title: 'Analyst' }))
+  })
+
+  it('reports a failed remote name save with name copy and keeps the save retryable', async () => {
+    saveBotMeta.mockResolvedValue({ serverOutcome: 'failed' })
+    const bot = { name: 'research', title: 'Research' }
+
+    render(<BotDetailDialog bot={bot} onClose={vi.fn()} open />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Analyst' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith({ kind: 'error', message: 'Saved name locally; remote persistence failed' })
+    )
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save name' })).toHaveProperty('disabled', false))
+  })
+
+  it('surfaces a thrown save instead of swallowing it', async () => {
+    const failure = new Error('boom')
+    saveBotMeta.mockRejectedValue(failure)
+    const bot = { name: 'research', title: 'Research' }
+
+    render(<BotDetailDialog bot={bot} onClose={vi.fn()} open />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Analyst' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+
+    await waitFor(() => expect(notifyError).toHaveBeenCalledWith(failure, 'Could not save'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save name' })).toHaveProperty('disabled', false))
+  })
+
+  it('keeps the last good task list when a refresh fails', () => {
+    const job: RoutineJob = {
+      enabled: true,
+      job_id: 'daily-report',
+      name: 'Daily report',
+      schedule: 'every 1d',
+      state: 'scheduled'
+    }
+
+    const bot = { name: 'research', title: 'Research' }
+    routinesState.current = { data: { jobs: [job], scoped: 'research' }, error: null, isLoading: false }
+    const view = render(<BotDetailDialog bot={bot} onClose={vi.fn()} open />)
+
+    expect(screen.getByText('Daily report')).toBeTruthy()
+
+    routinesState.current = { data: undefined, error: new Error('offline'), isLoading: false }
+    view.rerender(<BotDetailDialog bot={bot} onClose={vi.fn()} open />)
+
+    expect(screen.getByText('Daily report')).toBeTruthy()
+  })
+
+  it('renders an orphaned row (connection removed) read-only instead of throwing', () => {
+    const orphan = { name: 'research', title: 'Research', sourceScoped: true }
+
+    render(<BotDetailDialog bot={orphan} onClose={vi.fn()} open />)
+
+    expect(screen.getByText('This bot’s connection was removed. Its details are read-only.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Open chat' })).toHaveProperty('disabled', true)
+  })
+})
+
+describe('routinesQueryTarget', () => {
+  it('resolves an orphaned owner passively and disables its query', async () => {
+    const { routinesQueryTarget } = await import('./cron')
+    const target = routinesQueryTarget({ name: 'research', sourceScoped: true })
+
+    expect(target.orphaned).toBe(true)
+    expect(target.enabled).toBe(false)
+  })
+
+  it('keys an unscoped owner by name, as before', async () => {
+    const { routinesQueryTarget } = await import('./cron')
+
+    expect(routinesQueryTarget('research')).toMatchObject({ enabled: true, key: 'research', orphaned: false })
   })
 })

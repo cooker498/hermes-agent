@@ -12,18 +12,18 @@ import {
   useI18n,
   useValue
 } from '@hermes/plugin-sdk'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { avatarColor, botAppearance, BotFace } from './avatar'
 import { AvatarPicker } from './avatar-picker'
-import { RoutineDetailDialog, RoutineRow, selectRoutineJobs, useRoutines } from './cron'
+import { RoutineDetailDialog, RoutineRow, routinesQueryTarget, selectRoutineJobs, useRoutines } from './cron'
 import { $botMeta, botSelectionKey, ROSTER_KEY, saveBotMeta } from './data'
 import { editedLook, type EditProfileLook } from './edit-profile-look'
 import { useBots } from './i18n'
 import { displayName } from './labels'
 import { openRosterBot } from './roster-actions'
 import { botRosterMeta } from './routing'
-import type { RosterRow } from './types'
+import type { RosterRow, RoutineJob } from './types'
 
 interface BotDetailDialogProps {
   bot: null | RosterRow
@@ -54,7 +54,12 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
   const [saving, setSaving] = useState<'avatar' | 'name' | null>(null)
   const [detailJobId, setDetailJobId] = useState<null | string>(null)
   const [seedKey, setSeedKey] = useState<null | string>(null)
+  // Passive owner resolution: an orphaned row (its connection was deleted)
+  // renders read-only instead of throwing from the dispatch-only route lookup.
   const routines = useRoutines(bot)
+  const orphaned = bot ? routinesQueryTarget(bot).orphaned : false
+  // A failed refresh keeps the last good list for THIS bot (cron.tsx selectRoutineJobs).
+  const lastJobs = useRef<{ jobs: RoutineJob[]; key: null | string }>({ jobs: [], key: null })
   const currentKey = bot ? `${botSelectionKey(bot)}:${open}` : null
 
   if (currentKey !== seedKey) {
@@ -75,8 +80,17 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
     return null
   }
 
+  // Keep this bot's last good (already owner-filtered) list: a failed refresh has no
+  // `scoped` answer to filter by, so re-filtering the raw fallback would drop it.
+  const lastKey = botSelectionKey(bot)
+  const lastGood = lastJobs.current.key === lastKey ? lastJobs.current.jobs : []
   const routineView = selectRoutineJobs(routines.data, routines.error, [], bot.name)
-  const jobs = routineView.jobs
+
+  if (routineView.live) {
+    lastJobs.current = { jobs: routineView.jobs, key: lastKey }
+  }
+
+  const jobs = routineView.live || !routines.error ? routineView.jobs : lastGood
   const detailJob = detailJobId ? jobs.find(job => job.job_id === detailJobId) || null : null
 
   const persistLook = async (kind: 'avatar' | 'name', next: EditProfileLook) => {
@@ -95,11 +109,16 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
     try {
       const persistence = await saveBotMeta(bot, look)
 
+      // Only an explicit remote failure is an error -- 'unsupported' is the
+      // older-gateway local fallback (see edit-profile-dialog.tsx). A failed
+      // save keeps the button enabled so the user can retry.
       if (persistence.serverOutcome === 'failed') {
         host.notify({
           kind: 'error',
-          message: b.avatar.savedLocally
+          message: kind === 'name' ? b.details.nameSavedLocally : b.avatar.savedLocally
         })
+
+        return
       }
 
       if (persistence.serverOutcome === 'persisted') {
@@ -109,6 +128,8 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
       }
 
       setOpened(next)
+    } catch (err) {
+      host.notifyError(err, b.details.saveFailed)
     } finally {
       setSaving(null)
     }
@@ -125,14 +146,18 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
         </DialogHeader>
 
         <div className="grid gap-6">
+          {saving ? (
+            <p className="text-sm text-(--ui-text-secondary)" role="status">
+              {b.details.saving}
+            </p>
+          ) : null}
+          {orphaned ? (
+            <p className="text-sm text-(--ui-text-secondary)" role="note">
+              {b.details.ownerRemoved}
+            </p>
+          ) : null}
           <div className="flex items-center gap-4">
-            <BotFace
-              color={avatarColor(color, bot.name)}
-              image={image}
-              name={bot.name}
-              shape={shape}
-              size={80}
-            />
+            <BotFace color={avatarColor(color, bot.name)} image={image} name={bot.name} shape={shape} size={80} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-xl font-semibold">{display}</div>
               <div className="truncate font-mono text-xs text-(--ui-text-tertiary)">{bot.name}</div>
@@ -141,6 +166,7 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
               ) : null}
             </div>
             <Button
+              disabled={orphaned}
               onClick={() => {
                 void openRosterBot(bot)
                 onClose()
@@ -162,7 +188,7 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
               <Button
                 disabled={saving !== null || title.trim() === opened.title.trim()}
                 loading={saving === 'name'}
-                onClick={() => void persistLook('name', { ...opened, title })}
+                onClick={() => void persistLook('name', { ...opened, title: title.trim() })}
                 variant="secondary"
               >
                 {b.details.saveName}
@@ -173,13 +199,7 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
           <section className="grid gap-3 border-t border-(--ui-stroke-tertiary) pt-4">
             <h3 className="text-sm font-semibold">{b.details.avatar}</h3>
             <div className="flex justify-center py-1">
-              <BotFace
-                color={avatarColor(color, bot.name)}
-                image={image}
-                name={bot.name}
-                shape={shape}
-                size={64}
-              />
+              <BotFace color={avatarColor(color, bot.name)} image={image} name={bot.name} shape={shape} size={64} />
             </div>
             <AvatarPicker
               color={color}
@@ -197,8 +217,7 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
             <div className="flex justify-end">
               <Button
                 disabled={
-                  saving !== null ||
-                  (shape === opened.shape && color === opened.color && image === opened.image)
+                  saving !== null || (shape === opened.shape && color === opened.color && image === opened.image)
                 }
                 loading={saving === 'avatar'}
                 onClick={() => void persistLook('avatar', { ...opened, shape, color, image })}
@@ -211,11 +230,11 @@ export function BotDetailDialog({ bot, open, onClose }: BotDetailDialogProps) {
 
           <section className="grid gap-3 border-t border-(--ui-stroke-tertiary) pt-4">
             <h3 className="text-sm font-semibold">{b.details.tasks}</h3>
-            {routines.isLoading && !routineView.all.length ? (
+            {routines.isLoading && !jobs.length ? (
               <div className="flex min-h-20 items-center justify-center">
                 <GlyphSpinner ariaLabel={t.common.loading} className="text-(--ui-text-tertiary)" spinner="breathe" />
               </div>
-            ) : routines.error && !routineView.all.length ? (
+            ) : routines.error && !jobs.length ? (
               <div className="grid min-h-20 place-items-center gap-2 text-center text-sm text-(--ui-text-secondary)">
                 <span>{b.cron.readFailure}</span>
                 <Button onClick={() => void routines.refetch()} size="sm" variant="secondary">

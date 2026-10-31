@@ -45,7 +45,7 @@ import { $botMeta, $lastRoster, botHandle, botRosterKey, botSelectionKey, isActi
 import { labeled } from './dialog-parts'
 import { botsText, type BotsText, useBots } from './i18n'
 import { displayName } from './labels'
-import { botConnectionRoute, botRosterMeta, requestForBot } from './routing'
+import { botConnectionRoute, botRosterMeta, requestForBot, resolveBotConnectionRoute } from './routing'
 import { ScreenHero } from './screen-hero'
 import { ID } from './shared'
 import type { BotMeta, RosterRow, RoutineJob } from './types'
@@ -171,7 +171,11 @@ export async function loadRoutines(owner: RoutineOwner): Promise<RoutineListResu
   }
 }
 
-export function useRoutines(owner: RoutineOwner) {
+/** The routines query identity for *owner*, resolved passively: render paths
+ *  (the details page can still show an orphaned row whose connection was
+ *  deleted) must never hit botConnectionRoute()'s dispatch throw. An orphaned
+ *  owner keys by its degraded roster key and stays disabled. */
+export function routinesQueryTarget(owner: RoutineOwner) {
   const bot =
     typeof owner === 'string'
       ? {
@@ -179,13 +183,20 @@ export function useRoutines(owner: RoutineOwner) {
         }
       : owner
 
-  const route = botConnectionRoute(bot)
-  const key = route ? botRosterKey(bot) : bot?.name || ''
+  const resolved = resolveBotConnectionRoute(bot)
+  const orphaned = resolved.status === 'owner_removed'
+  const key = resolved.route || orphaned ? botRosterKey(bot) : bot?.name || ''
+
+  return { bot, key, enabled: Boolean(bot?.name) && !orphaned, orphaned }
+}
+
+export function useRoutines(owner: RoutineOwner) {
+  const { bot, enabled, key } = routinesQueryTarget(owner)
 
   return useQuery({
     queryKey: [...ROUTINES_KEY, key],
     queryFn: () => loadRoutines(bot),
-    enabled: Boolean(bot?.name),
+    enabled,
     refetchInterval: 20000,
     staleTime: 8000
   })
